@@ -10,16 +10,20 @@ import { Settlement } from './screens/Settlement'
 import { Setup } from './screens/Setup'
 import { Table } from './screens/Table'
 import { StoreProvider, useStore } from './state/StoreProvider'
+import { MainMenu, type GameChoice } from './MainMenu'
+import { UndercoverApp } from './undercover/UndercoverApp'
 
-function Screens() {
+// ---------------------------------------------------------------------------
+// Poker — exactly the same as before, just moved into its own component
+// ---------------------------------------------------------------------------
+
+function PokerScreens({ onBack }: { readonly onBack: () => void }) {
   const { state } = useStore()
   const [screen, setScreen] = useState<Screen>('table')
   const [tourOpen, setTourOpen] = useState(false)
 
   const setupPhase = state.phase === 'setup'
 
-  // First-time visitors meet the walkthrough before they meet the setup form,
-  // so the words on it mean something when they get there.
   useEffect(() => {
     if (setupPhase && !hasSeenWalkthrough()) {
       setTourOpen(true)
@@ -27,19 +31,26 @@ function Screens() {
     }
   }, [setupPhase])
 
-  // Before a game exists there is no bank, no players and nothing to navigate
-  // between, so the setup screen stands on its own without the shell.
   if (setupPhase) {
     return (
       <div
         className={`${CONTAINER} safe-t safe-b flex min-h-full flex-col gap-4 p-4 lg:gap-5 lg:px-6 lg:py-8`}
       >
         <header className="flex items-start justify-between gap-4">
-          <div>
-            <h1 className="text-xl font-semibold tracking-tight lg:text-2xl">Poker Ledger</h1>
-            <p className="text-sm text-muted">
-              The chip stack for a real card game. No real money involved.
-            </p>
+          <div className="flex items-start gap-3">
+            <button
+              type="button"
+              onClick={onBack}
+              className="mt-0.5 flex size-9 items-center justify-center rounded-lg border border-line bg-raised text-sm text-muted active:bg-line"
+            >
+              ←
+            </button>
+            <div>
+              <h1 className="text-xl font-semibold tracking-tight lg:text-2xl">Poker Ledger</h1>
+              <p className="text-sm text-muted">
+                The chip stack for a real card game. No real money involved.
+              </p>
+            </div>
           </div>
           <button
             type="button"
@@ -70,10 +81,31 @@ function Screens() {
   )
 }
 
+// ---------------------------------------------------------------------------
+// Top-level app — game picker → poker or undercover
+// ---------------------------------------------------------------------------
+
+type ActiveGame = 'menu' | 'poker' | 'undercover'
+
 export default function App() {
+  const [activeGame, setActiveGame] = useState<ActiveGame>('menu')
+
+  if (activeGame === 'menu') {
+    return (
+      <MainMenu
+        onChoose={(game: GameChoice) => setActiveGame(game)}
+      />
+    )
+  }
+
+  if (activeGame === 'undercover') {
+    return <UndercoverApp onBackToMenu={() => setActiveGame('menu')} />
+  }
+
+  // Poker — needs its store provider
   return (
     <StoreProvider>
-      <Screens />
+      <PokerScreens onBack={() => setActiveGame('menu')} />
     </StoreProvider>
   )
 }
