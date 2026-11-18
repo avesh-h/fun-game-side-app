@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { CONTAINER } from '../components/AppShell'
 import { useConfirm } from '../ui/ConfirmDialog'
 import {
@@ -21,6 +21,8 @@ import {
   startRound,
 } from './engine/machine'
 import type { UcGameState, UcPlayerId } from './engine/types'
+import { clearUcSession, loadUcSession, saveUcSession } from './persistence'
+import { useBackHandler } from '../platform/backButton'
 import { DescriptionRound } from './screens/DescriptionRound'
 import { Elimination } from './screens/Elimination'
 import { FinalResults } from './screens/FinalResults'
@@ -35,11 +37,27 @@ interface UndercoverAppProps {
 }
 
 export function UndercoverApp({ onBackToMenu }: UndercoverAppProps) {
-  const [state, setState] = useState<UcGameState>(INITIAL_STATE)
+  // Restored if the app was closed mid-game (see persistence.ts).
+  const [restored] = useState(loadUcSession)
+  const [state, setState] = useState<UcGameState>(() => restored?.state ?? INITIAL_STATE)
 
   // History stack for undo — every transition pushes the old state.
   // Cleared when a new round starts so undo never crosses round boundaries.
-  const historyRef = useRef<UcGameState[]>([])
+  const historyRef = useRef<UcGameState[]>(restored ? [...restored.history] : [])
+
+  // Saved after every change. `leaving` stops the unmount from writing back a
+  // game the players just chose to abandon.
+  const leavingRef = useRef(false)
+  useEffect(() => {
+    if (!leavingRef.current) saveUcSession({ state, history: historyRef.current })
+  }, [state])
+
+  /** Leaving on purpose wipes the saved game, the same as before it was saved. */
+  const leaveToMenu = useCallback(() => {
+    leavingRef.current = true
+    clearUcSession()
+    onBackToMenu()
+  }, [onBackToMenu])
 
   const { confirm, dialog } = useConfirm()
 
@@ -89,6 +107,23 @@ export function UndercoverApp({ onBackToMenu }: UndercoverAppProps) {
   const phase = state.phaseState.phase
   const isInRound = phase !== 'setup' && phase !== 'gameOver' && phase !== 'finalResults'
 
+  // Android Back: never drop a game silently. From setup it is just the menu.
+  useBackHandler(() => {
+    if (phase === 'setup') return false
+    if (isInRound) {
+      handleExit()
+    } else {
+      confirm({
+        title: 'Leave the game?',
+        body: 'The scores for this session will be cleared.',
+        confirmLabel: 'Leave',
+        tone: 'danger',
+        onConfirm: leaveToMenu,
+      })
+    }
+    return true
+  })
+
   // -------------------------------------------------------------------------
   // Confirm handlers
   // -------------------------------------------------------------------------
@@ -99,7 +134,7 @@ export function UndercoverApp({ onBackToMenu }: UndercoverAppProps) {
       body: 'The current round will be abandoned. No points will be counted. Scores from previous rounds are kept.',
       confirmLabel: 'Leave',
       tone: 'danger',
-      onConfirm: onBackToMenu,
+      onConfirm: leaveToMenu,
     })
   }
 
@@ -187,7 +222,7 @@ export function UndercoverApp({ onBackToMenu }: UndercoverAppProps) {
             onStart={(players, votingMode, roleConfig, scoringConfig) =>
               transitionFresh((s) => startRound(s, players, votingMode, roleConfig, scoringConfig))
             }
-            onBack={onBackToMenu}
+            onBack={leaveToMenu}
           />
         </div>
       )}
@@ -248,7 +283,7 @@ export function UndercoverApp({ onBackToMenu }: UndercoverAppProps) {
             historyRef.current = []
             setState(newSession())
           }}
-          onBackToMenu={onBackToMenu}
+          onBackToMenu={leaveToMenu}
         />
       )}
 
@@ -259,7 +294,7 @@ export function UndercoverApp({ onBackToMenu }: UndercoverAppProps) {
             historyRef.current = []
             setState(newSession())
           }}
-          onBackToMenu={onBackToMenu}
+          onBackToMenu={leaveToMenu}
         />
       )}
 

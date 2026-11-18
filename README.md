@@ -39,6 +39,18 @@ API, so anywhere that serves files will host it:
   directly. The build uses relative paths, so it works straight off the filesystem with
   no internet.
 
+## Installing it as an app
+
+Once it is hosted on an HTTPS address it can be installed like an app, and it then works
+with no internet at all.
+
+- **Android (Chrome)** — open the site and tap **Install app** (or ⋮ → *Add to Home screen*).
+- **iPhone (Safari)** — open the site, tap **Share → Add to Home Screen**.
+
+The installed app keeps its own saved games, separate from the browser: a game started in
+Safari will not appear in the installed app. When a new version has been deployed, the app
+shows **A new version is ready** and only updates when you tap it.
+
 ## How it is used at the table
 
 One phone or laptop runs the app and one person taps for everybody — the same person who

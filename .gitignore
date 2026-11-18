@@ -6,3 +6,4 @@ dist
 # local verification artefacts
 .playwright-mcp
 *.png
+!public/*.png

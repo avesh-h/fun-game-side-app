@@ -1,4 +1,5 @@
 import { useEffect, useRef, type ReactNode } from 'react'
+import { useBackHandler } from '../platform/backButton'
 
 interface ModalProps {
   readonly open: boolean
@@ -12,6 +13,15 @@ interface ModalProps {
 
 export function Modal({ open, onClose, title, children, footer, size = 'sm' }: ModalProps) {
   const panelRef = useRef<HTMLDivElement>(null)
+
+  // Android Back closes the popup, not the screen behind it.
+  useBackHandler(
+    () => {
+      onClose()
+      return true
+    },
+    { layer: 'modal', enabled: open },
+  )
 
   useEffect(() => {
     if (!open) return

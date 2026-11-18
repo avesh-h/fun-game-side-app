@@ -31,10 +31,13 @@ export const CONTAINER =
 export function AppShell({
   screen,
   onNavigate,
+  onMenu,
   children,
 }: {
   readonly screen: Screen
   readonly onNavigate: (next: Screen) => void
+  /** Back to the game menu. The ledger is saved, so nothing is lost. */
+  readonly onMenu: () => void
   readonly children: ReactNode
 }) {
   const { state, storageUnavailable } = useStore()
@@ -54,7 +57,17 @@ export function AppShell({
       <header className="safe-t sticky top-0 z-30 border-b border-line bg-bg/95 backdrop-blur">
         <div className={`${CONTAINER} px-4 lg:px-6`}>
           <div className="flex items-center justify-between gap-4 pb-2 pt-2">
-            <h1 className="text-sm font-semibold tracking-tight lg:text-base">Poker Ledger</h1>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={onMenu}
+                aria-label="Back to game menu"
+                className="flex size-9 items-center justify-center rounded-lg border border-line bg-raised text-sm text-muted active:bg-line"
+              >
+                ←
+              </button>
+              <h1 className="text-sm font-semibold tracking-tight lg:text-base">Poker Ledger</h1>
+            </div>
 
             <div className="flex items-center gap-3">
               <p className="text-xs text-faint lg:text-sm">

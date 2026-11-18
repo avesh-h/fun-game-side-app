@@ -22,7 +22,7 @@ interface StoredSession {
   readonly events: readonly GameEvent[]
 }
 
-type StorageLike = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>
+export type StorageLike = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>
 
 /**
  * localStorage, but only if it actually works.
@@ -31,7 +31,7 @@ type StorageLike = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>
  * it, so this proves a write succeeds before trusting it. When storage is
  * unavailable the app still runs perfectly — it just will not survive a reload.
  */
-function defaultStorage(): StorageLike | null {
+export function defaultStorage(): StorageLike | null {
   try {
     if (typeof localStorage === 'undefined') return null
     const probe = '__poker_ledger_probe__'

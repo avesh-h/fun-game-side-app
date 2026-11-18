@@ -12,6 +12,10 @@ import { Table } from './screens/Table'
 import { StoreProvider, useStore } from './state/StoreProvider'
 import { MainMenu, type GameChoice } from './MainMenu'
 import { UndercoverApp } from './undercover/UndercoverApp'
+import { loadActiveGame, saveActiveGame, type ActiveGame } from './platform/activeGame'
+import { useBackGuard, useBackHandler } from './platform/backButton'
+import { UpdatePrompt } from './platform/UpdatePrompt'
+import { useWakeLock } from './platform/wakeLock'
 
 // ---------------------------------------------------------------------------
 // Poker — exactly the same as before, just moved into its own component
@@ -23,6 +27,16 @@ function PokerScreens({ onBack }: { readonly onBack: () => void }) {
   const [tourOpen, setTourOpen] = useState(false)
 
   const setupPhase = state.phase === 'setup'
+
+  // Back returns to the table, then to the menu (open popups close first, in
+  // Modal). The ledger is saved after every tap, so the menu loses nothing.
+  useBackHandler(() => {
+    if (!setupPhase && screen !== 'table') {
+      setScreen('table')
+      return true
+    }
+    return false
+  })
 
   useEffect(() => {
     if (setupPhase && !hasSeenWalkthrough()) {
@@ -71,7 +85,7 @@ function PokerScreens({ onBack }: { readonly onBack: () => void }) {
   }
 
   return (
-    <AppShell screen={screen} onNavigate={setScreen}>
+    <AppShell screen={screen} onNavigate={setScreen} onMenu={onBack}>
       {screen === 'table' && <Table />}
       {screen === 'players' && <Players />}
       {screen === 'history' && <History />}
@@ -85,27 +99,34 @@ function PokerScreens({ onBack }: { readonly onBack: () => void }) {
 // Top-level app — game picker → poker or undercover
 // ---------------------------------------------------------------------------
 
-type ActiveGame = 'menu' | 'poker' | 'undercover'
-
 export default function App() {
-  const [activeGame, setActiveGame] = useState<ActiveGame>('menu')
+  const [activeGame, setActiveGame] = useState<ActiveGame>(loadActiveGame)
 
+  useEffect(() => {
+    saveActiveGame(activeGame)
+  }, [activeGame])
+
+  useWakeLock(activeGame !== 'menu')
+  const leaveGame = useBackGuard(activeGame !== 'menu', () => setActiveGame('menu'))
+
+  let content
   if (activeGame === 'menu') {
-    return (
-      <MainMenu
-        onChoose={(game: GameChoice) => setActiveGame(game)}
-      />
+    content = <MainMenu onChoose={(game: GameChoice) => setActiveGame(game)} />
+  } else if (activeGame === 'undercover') {
+    content = <UndercoverApp onBackToMenu={leaveGame} />
+  } else {
+    // Poker — needs its store provider
+    content = (
+      <StoreProvider>
+        <PokerScreens onBack={leaveGame} />
+      </StoreProvider>
     )
   }
 
-  if (activeGame === 'undercover') {
-    return <UndercoverApp onBackToMenu={() => setActiveGame('menu')} />
-  }
-
-  // Poker — needs its store provider
   return (
-    <StoreProvider>
-      <PokerScreens onBack={() => setActiveGame('menu')} />
-    </StoreProvider>
+    <>
+      {content}
+      <UpdatePrompt />
+    </>
   )
 }
